@@ -120,7 +120,7 @@ function App() {
     const loadDictionary = async () => {
       try {
         setDictionaryStatus('loading')
-        const response = await fetch('/words-it.txt')
+        const response = await fetch(`${import.meta.env.BASE_URL}words-it.txt`)
         const text = await response.text()
         const words = text
           .split(/\r?\n/)
