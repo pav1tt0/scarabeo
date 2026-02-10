@@ -11,7 +11,7 @@ npm run dev
 
 ## Dizionario
 
-Il file `public/words-it.txt` usa la lista MIT di parole italiane dal progetto napolux/paroleitaliane.
+Il file `public/words-it.txt` usa la lista MIT di parole italiane comuni dal progetto napolux/paroleitaliane.
 Fonte: https://github.com/napolux/paroleitaliane
 
 Puoi sostituirla con un'altra wordlist (una parola per riga) oppure caricare un file `.txt` direttamente dall'interfaccia.
