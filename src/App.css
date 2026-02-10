@@ -239,7 +239,7 @@ button:disabled {
   margin-top: 24px;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 900px) {
   .app {
     padding: 28px 16px 48px;
   }
@@ -249,14 +249,15 @@ button:disabled {
   }
 
   .grid {
-    grid-template-columns: repeat(4, 36px);
-    gap: 6px;
+    grid-template-columns: repeat(4, minmax(64px, 1fr));
+    gap: 10px;
   }
 
   .cell {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
-    line-height: 36px;
+    width: auto;
+    height: auto;
+    aspect-ratio: 1 / 1;
+    font-size: 1.5rem;
+    line-height: 1;
   }
 }
