@@ -68,6 +68,11 @@ h1 {
   gap: 8px;
 }
 
+.rules-mobile {
+  margin: 8px 0 24px;
+  display: none;
+}
+
 .panel {
   background: var(--card-alt);
   color: var(--ink);
@@ -242,6 +247,14 @@ button:disabled {
 @media (max-width: 900px) {
   .app {
     padding: 28px 16px 48px;
+  }
+
+  .rules-desktop {
+    display: none;
+  }
+
+  .rules-mobile {
+    display: block;
   }
 
   .panel {

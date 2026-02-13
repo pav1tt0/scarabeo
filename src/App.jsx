@@ -250,7 +250,7 @@ function App() {
             Adiacenze anche diagonali, niente riuso nella stessa parola, minimo 2 lettere.
           </p>
         </div>
-        <div className="card rules">
+        <div className="card rules rules-desktop">
           <h2>Regole chiave</h2>
           <ul>
             <li>Parole italiane da dizionario.</li>
@@ -340,11 +340,22 @@ function App() {
         )}
       </section>
 
+      <section className="card rules rules-mobile">
+        <h2>Regole chiave</h2>
+        <ul>
+          <li>Parole italiane da dizionario.</li>
+          <li>“QU” vale due lettere ma una casella.</li>
+          <li>Niente nomi propri o parole duplicate.</li>
+          <li>Se appare il simbolo stop, trattalo come “O”.</li>
+        </ul>
+      </section>
+
       <footer className="footer">
         <p>
           PWA pronta per l’installazione: apri dal browser mobile e “Aggiungi a
           schermata Home”.
         </p>
+        <p>Sviluppo: Paolo Vittori e ChatGPT.</p>
       </footer>
     </div>
   )
