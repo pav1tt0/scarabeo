@@ -7,6 +7,84 @@ const EMPTY_GRID = Array.from({ length: CELL_COUNT }, () => '')
 
 const ALPHA_ONLY = /[^A-Z]/g
 const DIACRITICS = /[\u0300-\u036f]/g
+const VOWELS = /[AEIOU]/
+const RARE_FOREIGN_LETTERS = /[JKWXY]/
+const LONG_CONSONANT_RUN = /[^AEIOU]{5,}/
+const ITALIAN_LIKE_ENDING = /[AEIOU]$/
+const COMMON_CONSONANT_ENDINGS = new Set(['BAR', 'FILM', 'GAS', 'BUS', 'SPORT', 'STOP'])
+const COMMON_MODE_MAX_LENGTH = 10
+const COMMONISH_SUFFIX = /(ARE|ERE|IRE|ATO|ATA|ATI|ATE|ITO|ITA|ITI|ITE|ONE|ONI|INA|INE|INO|ALE|ALI|ILE|ILI|ZZA|ZZE|MENTO|MENTI|TORE|TORI|TRICE|TRICI)$/
+const COMMON_MODE_SUSPICIOUS_CHUNKS = /(WIKI|DATA|HTTP|BLOG|CHAT|WEB|PHP|LOL|LEET|AIR|BUS)/ 
+const DICTIONARY_STOPLIST_RAW = [
+  'AFRICA',
+  'ANDROID',
+  'AIRBUS',
+  'ASIA',
+  'AUSTRIA',
+  'BELGIO',
+  'BERLINO',
+  'BERNA',
+  'BASILEA',
+  'BOEING',
+  'BOSTON',
+  'CALIFORNIA',
+  'CANADA',
+  'DANIMARCA',
+  'ETIOPIA',
+  'EUROPA',
+  'FINLANDIA',
+  'GIAPPONE',
+  'GHANA',
+  'GINEVRA',
+  'GRECIA',
+  'INGHILTERRA',
+  'INTERNET',
+  'IRLANDA',
+  'ITALIA',
+  'KENYA',
+  'LEET',
+  'LITUANIA',
+  'LONDRA',
+  'LOLCAT',
+  'LUSSEMBURGO',
+  'MEDIAWIKI',
+  'MESSICO',
+  'NORVEGIA',
+  'PARIGI',
+  'PHP',
+  'POLONIA',
+  'PORTOGALLO',
+  'SCOZIA',
+  'SPAGNA',
+  'SVEZIA',
+  'SVIZZERA',
+  'TURCHIA',
+  'UNGHERIA',
+  'URUGUAY',
+  'WASHINGTON',
+  'WIKIDATA',
+  'WIKIPEDIA',
+  'ZURIGO',
+  'GENNAIO',
+  'FEBBRAIO',
+  'MARZO',
+  'APRILE',
+  'MAGGIO',
+  'GIUGNO',
+  'LUGLIO',
+  'AGOSTO',
+  'SETTEMBRE',
+  'OTTOBRE',
+  'NOVEMBRE',
+  'DICEMBRE',
+  'LUNEDI',
+  'MARTEDI',
+  'MERCOLEDI',
+  'GIOVEDI',
+  'VENERDI',
+  'SABATO',
+  'DOMENICA',
+]
 
 const normalizeWord = (word) =>
   word
@@ -15,6 +93,55 @@ const normalizeWord = (word) =>
     .normalize('NFD')
     .replace(DIACRITICS, '')
     .replace(ALPHA_ONLY, '')
+
+const DICTIONARY_STOPLIST = new Set(DICTIONARY_STOPLIST_RAW.map(normalizeWord))
+
+const isLikelyItalianWord = (word) => {
+  if (word.length < 3) return false
+  if (!VOWELS.test(word)) return false
+  if (RARE_FOREIGN_LETTERS.test(word)) return false
+  if (LONG_CONSONANT_RUN.test(word)) return false
+  if (DICTIONARY_STOPLIST.has(word)) return false
+  if (!ITALIAN_LIKE_ENDING.test(word) && !COMMON_CONSONANT_ENDINGS.has(word)) return false
+  return true
+}
+
+const isCommonItalianWord = (word) => {
+  if (!isLikelyItalianWord(word)) return false
+  if (word.length > COMMON_MODE_MAX_LENGTH) return false
+  if (COMMON_MODE_SUSPICIOUS_CHUNKS.test(word)) return false
+  if (word.length <= 6) return true
+  return COMMONISH_SUFFIX.test(word)
+}
+
+const parseDictionaryText = (text, { mode }) => {
+  const unique = new Set()
+  let rawCount = 0
+  let rejectedCount = 0
+
+  for (const line of text.split(/\r?\n/)) {
+    const word = normalizeWord(line)
+    if (word.length < 3) continue
+    rawCount += 1
+    const keep =
+      mode === 'off'
+        ? true
+        : mode === 'common'
+          ? isCommonItalianWord(word)
+          : isLikelyItalianWord(word)
+    if (!keep) {
+      rejectedCount += 1
+      continue
+    }
+    unique.add(word)
+  }
+
+  return {
+    words: Array.from(unique),
+    rawCount,
+    rejectedCount,
+  }
+}
 
 const buildTrie = (words) => {
   const root = { children: Object.create(null), isWord: false }
@@ -111,10 +238,29 @@ function App() {
   const [minLength, setMinLength] = useState(2)
   const [results, setResults] = useState([])
   const [dictionaryStatus, setDictionaryStatus] = useState('loading')
-  const [dictionaryMeta, setDictionaryMeta] = useState({ count: 0, source: 'default' })
+  const [dictionaryMeta, setDictionaryMeta] = useState({
+    count: 0,
+    rawCount: 0,
+    rejectedCount: 0,
+    source: 'default',
+  })
   const [trie, setTrie] = useState(null)
   const [notice, setNotice] = useState('')
+  const [dictionaryFilterMode, setDictionaryFilterMode] = useState('strict')
+  const [dictionaryRaw, setDictionaryRaw] = useState({ text: '', source: 'default' })
   const cellRefs = useRef([])
+
+  const applyDictionary = (text, source) => {
+    const parsed = parseDictionaryText(text, { mode: dictionaryFilterMode })
+    setTrie(buildTrie(parsed.words))
+    setDictionaryMeta({
+      count: parsed.words.length,
+      rawCount: parsed.rawCount,
+      rejectedCount: parsed.rejectedCount,
+      source,
+    })
+    setDictionaryStatus('ready')
+  }
 
   useEffect(() => {
     const loadDictionary = async () => {
@@ -122,13 +268,7 @@ function App() {
         setDictionaryStatus('loading')
         const response = await fetch(`${import.meta.env.BASE_URL}words-it.txt`)
         const text = await response.text()
-        const words = text
-          .split(/\r?\n/)
-          .map(normalizeWord)
-          .filter((word) => word.length >= 3)
-        setTrie(buildTrie(words))
-        setDictionaryMeta({ count: words.length, source: 'default' })
-        setDictionaryStatus('ready')
+        setDictionaryRaw({ text, source: 'default' })
       } catch (error) {
         setDictionaryStatus('error')
       }
@@ -136,6 +276,13 @@ function App() {
 
     loadDictionary()
   }, [])
+
+  useEffect(() => {
+    if (!dictionaryRaw.text) return
+    applyDictionary(dictionaryRaw.text, dictionaryRaw.source)
+    setResults([])
+    setNotice('')
+  }, [dictionaryRaw, dictionaryFilterMode])
 
   const stats = useMemo(() => {
     if (!results.length) return { total: 0, longest: 0 }
@@ -228,15 +375,8 @@ function App() {
     const file = event.target.files?.[0]
     if (!file) return
     const text = await file.text()
-    const words = text
-      .split(/\r?\n/)
-      .map(normalizeWord)
-      .filter((word) => word.length >= 3)
-    setTrie(buildTrie(words))
-    setDictionaryMeta({ count: words.length, source: file.name })
-    setDictionaryStatus('ready')
-    setResults([])
-    setNotice('')
+    setDictionaryRaw({ text, source: file.name })
+    event.target.value = ''
   }
 
   return (
@@ -269,6 +409,9 @@ function App() {
               Dizionario: {dictionaryStatus === 'ready' ? 'pronto' : dictionaryStatus}
             </span>
             <span className="pill">{dictionaryMeta.count} parole</span>
+            {dictionaryMeta.rejectedCount > 0 && (
+              <span className="pill">Filtrate: {dictionaryMeta.rejectedCount}</span>
+            )}
           </div>
         </div>
 
@@ -302,6 +445,42 @@ function App() {
             <input type="file" accept=".txt" onChange={handleDictionaryUpload} />
           </label>
         </div>
+
+        <fieldset className="filter-mode" aria-label="Filtro dizionario">
+          <legend>Filtro dizionario</legend>
+          <label className="toggle-row">
+            <input
+              type="radio"
+              name="dictionary-filter-mode"
+              checked={dictionaryFilterMode === 'off'}
+              onChange={() => setDictionaryFilterMode('off')}
+            />
+            <span>Completo</span>
+          </label>
+          <label className="toggle-row">
+            <input
+              type="radio"
+              name="dictionary-filter-mode"
+              checked={dictionaryFilterMode === 'strict'}
+              onChange={() => setDictionaryFilterMode('strict')}
+            />
+            <span>Italiano (consigliato)</span>
+          </label>
+          <label className="toggle-row">
+            <input
+              type="radio"
+              name="dictionary-filter-mode"
+              checked={dictionaryFilterMode === 'common'}
+              onChange={() => setDictionaryFilterMode('common')}
+            />
+            <span>Solo comuni (beta)</span>
+          </label>
+        </fieldset>
+
+        <p className="dictionary-note">
+          Origine: {dictionaryMeta.source}
+          {dictionaryMeta.rawCount > 0 ? ` • voci lette: ${dictionaryMeta.rawCount}` : ''}
+        </p>
 
         <div className="slider">
           <label htmlFor="min-length">Lunghezza minima: {minLength}</label>

@@ -211,6 +211,45 @@ button:disabled {
   display: none;
 }
 
+.toggle-row {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.toggle-row input {
+  accent-color: var(--teal);
+}
+
+.filter-mode {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #dfcfbb;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+  background: #fff8ec;
+}
+
+.filter-mode legend {
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.filter-mode .toggle-row {
+  margin-top: 0;
+}
+
+.dictionary-note {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
 .slider {
   margin-top: 16px;
   display: grid;
